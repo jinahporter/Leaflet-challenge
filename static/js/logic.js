@@ -5,26 +5,65 @@ var queryUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_we
 // Perform a GET request to the query URL
 d3.json(queryUrl, function (data) {
 
-    console.log(data);
+    //console.log(data);
     // Once we get a response, create a geoJSON layer containing the features array and add a popup for each marker
     // then, send the layer to the createMap() function.
-    var earthquakes = L.geoJSON(data.features, {
-        onEachFeature: addPopup
+
+    createFeatures(data.features);
+});
+
+function createFeatures(data_earthquakes) {
+
+    var earthquakes = L.geoJSON(data_earthquakes, {
+
+        onEachFeature: addPopup,
+        pointToLayer: style
     });
 
     createMap(earthquakes);
-});
 
+}
+
+function markerSize(mag) {
+    if (mag === 0) {
+        return 1;
+    }
+    return mag * 50000;
+}
+
+function chooseColor(mag) {
+    switch (true) {
+        case mag > 5:
+            return "purple";
+        case mag > 4.5:
+            return "red";
+        case mag > 4:
+            return "orange";
+        default:
+            return "yellow";
+    }
+}
+
+function style(feature, latlng) {
+    return new L.circle(latlng, {
+        opacity: 1,
+        fillOpacity: 1,
+        fillColor: chooseColor(feature.properties.mag),
+        color: "#0000000",
+        radius: markerSize(feature.properties.mag),
+        stroke: true,
+        weight: 0.5
+    })
+};
 
 // Define a function we want to run once for each feature in the features array
 function addPopup(feature, layer) {
     // Give each feature a popup describing the place and time of the earthquake
-    return layer.bindPopup(`<h3> ${feature.properties.place} </h3> <hr> <p> ${Date(feature.properties.time)} </p>`);
+    layer.bindPopup(`<h3> ${feature.properties.place} </h3> <hr> <p> ${Date(feature.properties.time)} </p>`);
 }
 
 // function to receive a layer of markers and plot them on a map.
 function createMap(earthquakes) {
-
     // Define streetmap and darkmap layers
     var streetmap = L.tileLayer("https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}", {
         maxZoom: 18,
@@ -63,43 +102,16 @@ function createMap(earthquakes) {
         collapsed: false
     }).addTo(myMap);
 
-
-    d3.json(queryUrl, function (earthquakeData) {
-
-        function markerSize(mag) {
-            if (mag === 0) {
-                return 1;
-            }
-            return mag * 3;
-        }
-
-        function style(feature) {
-            return {
-                opacity: 1,
-                fillOpacity: 1,
-                fillColor: chooseColor(feature.properties.mag),
-                color: "#0000000",
-                radius: markerSize(feature.properties.mag),
-                stroke: true,
-                weight: 0.5
-            }
-        };
-
-        function chooseColor(mag) {
-            switch (true) {
-                case mag > 5:
-                    return "purple";
-                case mag > 4.5:
-                    return "red";
-                case mag > 4:
-                    return "orange";
-                default:
-                    return "yellow";
-            }
-        }
-    });
-
-
+    function getColor(d) {
+        return d > 9 ? '#800026' :
+               d > 8  ? '#BD0026' :
+               d > 7  ? '#E31A1C' :
+               d > 6  ? '#FC4E2A' :
+               d > 5   ? '#FD8D3C' :
+               d > 4.5   ? '#FEB24C' :
+               d > 4   ? '#FED976' :
+                          '#FFEDA0';
+    };
 
     //create legend
     var legend = L.control({
@@ -107,10 +119,14 @@ function createMap(earthquakes) {
     });
 
     legend.onAdd = function () {
-        var legend_div = L.DomUtil.create('div', 'legend');
+        var div = L.DomUtil.create('div', 'info legend');
+        magnitude = [4, 4.5, 5, 6, 7, 8, 9],
+        labels = [];
 
-        legend_div.innerHTML += "output"
-        return legend_div;
+        for (var i = 0; i < magnitude.length; i++) {
+            div.innerHTML += '<i style="background:' + getColor(magnitude[i] + 1) + '"></i> ' + magnitude[i] + (magnitude[i + 1] ? '&ndash;' + magnitude[i + 1] + '<br>' : '+');
+        };
+        return div;
     };
     legend.addTo(myMap);
 };
